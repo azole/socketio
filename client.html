@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>client</title>
+    </head>
+    <body>
+        <label>Name:</lable><input id="name"></input><button id="btnConnect">connect</button>
+        <button id="btnDisconnect">Disconnect</button>
+        <br>
+        <label>private message for:</lable><input id="sendto"></input>
+        <br>
+        <label>message:</lable><input id="msg" size="60"></input><button id="btnSend">Send</button>
+        <br><span>上線清單：</span>
+        <div id="list" style="border:1px solid black;width:500px"></div>
+        <span>訊息：</span>
+        <div id="display" style="border:1px solid black; width:500px;height:400px;"></div>
+        <script src="socket.io.js"></script>
+        <script>
+        	var PORT = 1234;
+        	var IP = 'localhost';	// 如果要跨機器測試，記得改IP
+
+			var display= document.getElementById('display');
+
+			var socket = null;
+			var name = '';
+			document.getElementById('btnConnect').onclick = function(){
+				if(socket!==null)
+					return;
+				socket = io.connect('http://' + IP +':' + PORT);
+				name = document.getElementById('name').value;
+				console.log('register:', name);
+				if(name.length<=0){
+					showMsg('warning', 'system', 'You have to input your name.');
+				} else {
+					socket.emit('register', {name: name});
+				}
+
+				socket.on('chat', function(data){
+					showMsg(data.type, data.from, data.msg);
+				});
+				
+				socket.on('system', function(data){
+					var type = data.code > 0 ? 'error' : 'info';
+					showMsg(type, data.from, data.msg);
+				});
+				var list = document.getElementById('list');
+				socket.on('list', function(data){
+					list.innerHTML = data.list;
+				});
+			};
+
+			document.getElementById('btnDisconnect').onclick = function(){
+				socket.emit('disconnectByUser');
+			};
+
+			document.getElementById('btnSend').onclick = function(){
+				var sendto = document.getElementById('sendto').value;
+				var channel = sendto.length > 0 ? 'private' : 'public';
+	          	var msg = document.getElementById('msg').value;
+	          	if(msg.length>0){
+	          		socket.emit(channel, {sendto:sendto, msg: msg});
+	          	}
+	          	showMsg(channel, name, msg);
+			};
+
+			function showMsg(type, from, msg){
+				var now = new Date();
+				display.innerHTML = '[' + now.toLocaleTimeString() + '][' + type + ']['+from+'] ' + msg + "<br>" + display.innerHTML;
+			}
+        </script>
+
+    </body>
+</html>
